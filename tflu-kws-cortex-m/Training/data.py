@@ -35,11 +35,11 @@ from tensorflow.python.ops import gen_audio_ops as audio_ops
 
 MAX_NUM_WAVS_PER_CLASS = 2**27 - 1  # ~134M
 RANDOM_SEED = 59185
-BACKGROUND_NOISE_DIR_NAME = '_background_noise_'
-SILENCE_LABEL = '_silence_'
+BACKGROUND_NOISE_DIR_NAME = "_background_noise_"
+SILENCE_LABEL = "_silence_"
 SILENCE_INDEX = 0
 UNKNOWN_WORD_INDEX = 1
-UNKNOWN_WORD_LABEL = '_unknown_'
+UNKNOWN_WORD_LABEL = "_unknown_"
 
 
 def load_wav_file(wav_filename, desired_samples):
@@ -73,8 +73,9 @@ def calculate_mfcc(audio_signal, audio_sample_rate, window_size, window_stride, 
     Returns:
         Calculated mffc features.
     """
-    spectrogram = audio_ops.audio_spectrogram(input=audio_signal, window_size=window_size, stride=window_stride,
-                                              magnitude_squared=True)
+    spectrogram = audio_ops.audio_spectrogram(
+        input=audio_signal, window_size=window_size, stride=window_stride, magnitude_squared=True
+    )
 
     mfcc_features = audio_ops.mfcc(spectrogram, audio_sample_rate, dct_coefficient_count=num_mfcc)
 
@@ -107,7 +108,7 @@ def which_set(filename, validation_percentage, testing_percentage):
     # We want to ignore anything after '_nohash_' in the file name when
     # deciding which set to put a wav in, so the data set creator has a way of
     # grouping wavs that are close variations of each other.
-    hash_name = re.sub(r'_nohash_.*$', '', base_name)
+    hash_name = re.sub(r"_nohash_.*$", "", base_name)
     # This looks a bit magical, but we need to decide whether this file should
     # go into the training, testing, or validation sets, and we want to keep
     # existing files in the same set even if more files are subsequently
@@ -116,15 +117,13 @@ def which_set(filename, validation_percentage, testing_percentage):
     # itself, so we do a hash of that and then use that to generate a
     # probability value that we use to assign it.
     hash_name_hashed = hashlib.sha1(tf.compat.as_bytes(hash_name)).hexdigest()
-    percentage_hash = ((int(hash_name_hashed, 16) %
-                       (MAX_NUM_WAVS_PER_CLASS + 1)) *
-                       (100.0 / MAX_NUM_WAVS_PER_CLASS))
+    percentage_hash = (int(hash_name_hashed, 16) % (MAX_NUM_WAVS_PER_CLASS + 1)) * (100.0 / MAX_NUM_WAVS_PER_CLASS)
     if percentage_hash < validation_percentage:
-        result = 'validation'
+        result = "validation"
     elif percentage_hash < (testing_percentage + validation_percentage):
-        result = 'testing'
+        result = "testing"
     else:
-        result = 'training'
+        result = "training"
     return result
 
 
@@ -148,19 +147,29 @@ class AudioProcessor:
         VALIDATION = 2
         TESTING = 3
 
-    def __init__(self, data_url, data_dir, silence_percentage, unknown_percentage,
-                 wanted_words, validation_percentage, testing_percentage, model_settings):
+    def __init__(
+        self,
+        data_url,
+        data_dir,
+        silence_percentage,
+        unknown_percentage,
+        wanted_words,
+        validation_percentage,
+        testing_percentage,
+        model_settings,
+    ):
         self.data_dir = Path(data_dir)
         self.model_settings = model_settings
         self.words_list = prepare_words_list(wanted_words)
 
         self._tf_datasets = {}
         self.background_data = None
-        self._set_size = {'training': 0, 'validation': 0, 'testing': 0}
+        self._set_size = {"training": 0, "validation": 0, "testing": 0}
 
         self._download_and_extract_data(data_url, data_dir)
-        self._prepare_datasets(silence_percentage, unknown_percentage, wanted_words,
-                               validation_percentage, testing_percentage)
+        self._prepare_datasets(
+            silence_percentage, unknown_percentage, wanted_words, validation_percentage, testing_percentage
+        )
         self._prepare_background_data()
 
     def get_data(self, mode, background_frequency=0, background_volume_range=0, time_shift=0):
@@ -179,19 +188,28 @@ class AudioProcessor:
             ValueError: If mode is not recognised.
         """
         if mode == AudioProcessor.Modes.TRAINING:
-            dataset = self._tf_datasets['training']
+            dataset = self._tf_datasets["training"]
         elif mode == AudioProcessor.Modes.VALIDATION:
-            dataset = self._tf_datasets['validation']
+            dataset = self._tf_datasets["validation"]
         elif mode == AudioProcessor.Modes.TESTING:
-            dataset = self._tf_datasets['testing']
+            dataset = self._tf_datasets["testing"]
         else:
             ValueError("Incorrect dataset type given")
 
         use_background = (self.background_data is not None) and (mode == AudioProcessor.Modes.TRAINING)
-        dataset = dataset.map(lambda path, label: self._process_path(path, label, self.model_settings,
-                                                                     background_frequency, background_volume_range,
-                                                                     time_shift, use_background, self.background_data),
-                              num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        dataset = dataset.map(
+            lambda path, label: self._process_path(
+                path,
+                label,
+                self.model_settings,
+                background_frequency,
+                background_volume_range,
+                time_shift,
+                use_background,
+                self.background_data,
+            ),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        )
 
         return dataset
 
@@ -208,17 +226,25 @@ class AudioProcessor:
             ValueError: If mode is not recognised.
         """
         if mode == AudioProcessor.Modes.TRAINING:
-            return self._set_size['training']
+            return self._set_size["training"]
         elif mode == AudioProcessor.Modes.VALIDATION:
-            return self._set_size['validation']
+            return self._set_size["validation"]
         elif mode == AudioProcessor.Modes.TESTING:
-            return self._set_size['testing']
+            return self._set_size["testing"]
         else:
-            ValueError('Incorrect dataset type given')
+            ValueError("Incorrect dataset type given")
 
     @staticmethod
-    def _process_path(path, label, model_settings, background_frequency, background_volume_range, time_shift_samples,
-                      use_background, background_data):
+    def _process_path(
+        path,
+        label,
+        model_settings,
+        background_frequency,
+        background_volume_range,
+        time_shift_samples,
+        use_background,
+        background_data,
+    ):
         """Load wav files and calculate mfcc features.
 
         Random shifting of samples and adding in background noise is done within this function as well.
@@ -238,7 +264,7 @@ class AudioProcessor:
             Tuple of calculated flattened mfcc and its class label.
         """
 
-        desired_samples = model_settings['desired_samples']
+        desired_samples = model_settings["desired_samples"]
         audio, sample_rate = load_wav_file(path, desired_samples=desired_samples)
 
         # Make our own silence audio data.
@@ -247,8 +273,9 @@ class AudioProcessor:
 
         # Shift samples start position and pad any gaps with zeros.
         if time_shift_samples > 0:
-            time_shift_amount = tf.random.uniform(shape=(), minval=-time_shift_samples, maxval=time_shift_samples,
-                                                  dtype=tf.int32)
+            time_shift_amount = tf.random.uniform(
+                shape=(), minval=-time_shift_samples, maxval=time_shift_samples, dtype=tf.int32
+            )
         else:
             time_shift_amount = 0
         if time_shift_amount > 0:
@@ -258,33 +285,38 @@ class AudioProcessor:
             time_shift_padding = [[0, -time_shift_amount], [0, 0]]
             time_shift_offset = [-time_shift_amount, 0]
 
-        padded_foreground = tf.pad(audio, time_shift_padding, mode='CONSTANT')
+        padded_foreground = tf.pad(audio, time_shift_padding, mode="CONSTANT")
         sliced_foreground = tf.slice(padded_foreground, time_shift_offset, [desired_samples, -1])
 
         # Get a random section of background noise.
         if use_background:
             background_index = tf.random.uniform(shape=(), maxval=background_data.shape[0], dtype=tf.int32)
             background_sample = background_data[background_index]
-            background_offset = tf.random.uniform(shape=(), maxval=len(background_sample)-desired_samples,
-                                                  dtype=tf.int32)
-            background_clipped = background_sample[background_offset:(background_offset + desired_samples)]
+            background_offset = tf.random.uniform(
+                shape=(), maxval=len(background_sample) - desired_samples, dtype=tf.int32
+            )
+            background_clipped = background_sample[background_offset : (background_offset + desired_samples)]
             background_reshaped = tf.reshape(background_clipped, [desired_samples, 1])
             if tf.random.uniform(shape=(), maxval=1) < background_frequency:
                 background_volume = tf.random.uniform(shape=(), maxval=background_volume_range)
             else:
-                background_volume = tf.constant(0, dtype='float32')
+                background_volume = tf.constant(0, dtype="float32")
         else:
             background_reshaped = np.zeros([desired_samples, 1], dtype=np.float32)
-            background_volume = tf.constant(0, dtype='float32')
+            background_volume = tf.constant(0, dtype="float32")
 
         # Mix in background noise.
         background_mul = tf.multiply(background_reshaped, background_volume)
         background_add = tf.add(background_mul, sliced_foreground)
         background_clamp = tf.clip_by_value(background_add, -1.0, 1.0)
 
-        mfcc = calculate_mfcc(background_clamp, sample_rate, model_settings['window_size_samples'],
-                              model_settings['window_stride_samples'],
-                              model_settings['dct_coefficient_count'])
+        mfcc = calculate_mfcc(
+            background_clamp,
+            sample_rate,
+            model_settings["window_size_samples"],
+            model_settings["window_stride_samples"],
+            model_settings["dct_coefficient_count"],
+        )
         mfcc = tf.reshape(mfcc, [-1])
 
         return mfcc, label
@@ -301,10 +333,11 @@ class AudioProcessor:
         target_directory = Path(target_directory)
         target_directory.mkdir(exist_ok=True)
 
-        filename = data_url.split('/')[-1]
+        filename = data_url.split("/")[-1]
         filepath = target_directory / filename
 
         if not filepath.exists():
+
             def _report_hook(block_num, block_size, total_size):
                 """Function to track download progress in urllib"""
                 read_so_far = block_num * block_size
@@ -318,11 +351,12 @@ class AudioProcessor:
             filepath, _ = urllib.request.urlretrieve(data_url, filepath, _report_hook)
             print()
 
-        print(f'Untarring {filename}...')
-        tarfile.open(filepath, 'r:gz').extractall(target_directory)
+            print(f"Untarring {filename}...")
+            tarfile.open(filepath, "r:gz").extractall(target_directory)
 
-    def _prepare_datasets(self, silence_percentage, unknown_percentage, wanted_words,
-                          validation_percentage, testing_percentage):
+    def _prepare_datasets(
+        self, silence_percentage, unknown_percentage, wanted_words, validation_percentage, testing_percentage
+    ):
         """Split the data into train, validation and testing sets.
 
         Silence and unknown data is added, then sets are converted to TF Datasets.
@@ -342,9 +376,10 @@ class AudioProcessor:
             wanted_words_index[wanted_word] = index + 2
 
         # Find all wav files in subfolders.
-        search_path = self.data_dir / '*' / '*.wav'
-        data_index, unknown_index, all_words = self._find_and_sort_wavs(search_path, validation_percentage,
-                                                                        testing_percentage, wanted_words_index)
+        search_path = self.data_dir / "*" / "*.wav"
+        data_index, unknown_index, all_words = self._find_and_sort_wavs(
+            search_path, validation_percentage, testing_percentage, wanted_words_index
+        )
 
         for index, wanted_word in enumerate(wanted_words):
             if wanted_word not in all_words:
@@ -360,15 +395,12 @@ class AudioProcessor:
 
         # We need an arbitrary file to load as the input for the silence samples.
         # It's multiplied by zero later, so the content doesn't matter.
-        silence_wav_path = data_index['training'][0]['file']
-        for set_index in ['validation', 'testing', 'training']:
+        silence_wav_path = data_index["training"][0]["file"]
+        for set_index in ["validation", "testing", "training"]:
             set_size = len(data_index[set_index])  # Size before adding silence and unknown samples.
             silence_size = int(math.ceil(set_size * silence_percentage / 100))
             for _ in range(silence_size):
-                data_index[set_index].append({
-                    'label': SILENCE_LABEL,
-                    'file': silence_wav_path
-                })
+                data_index[set_index].append({"label": SILENCE_LABEL, "file": silence_wav_path})
             # Pick some unknowns to add to each partition of the data set.
             random.shuffle(unknown_index[set_index])
             unknown_size = int(math.ceil(set_size * unknown_percentage / 100))
@@ -400,8 +432,8 @@ class AudioProcessor:
         Returns:
             3-tuple of known words, unknown words and mapping of all word labels.
         """
-        data_index = {'validation': [], 'testing': [], 'training': []}
-        unknown_index = {'validation': [], 'testing': [], 'training': []}
+        data_index = {"validation": [], "testing": [], "training": []}
+        unknown_index = {"validation": [], "testing": [], "training": []}
         all_words = {}
 
         for wav_path in tf.io.gfile.glob(str(search_pattern)):
@@ -417,11 +449,11 @@ class AudioProcessor:
             # If it's a known class, store its detail, otherwise add it to the list
             # we'll use to train the unknown label.
             if word in wanted_words_index:
-                data_index[set_index].append({'label': word, 'file': wav_path})
+                data_index[set_index].append({"label": word, "file": wav_path})
             else:
-                unknown_index[set_index].append({'label': word, 'file': wav_path})
+                unknown_index[set_index].append({"label": word, "file": wav_path})
         if not all_words:
-            raise Exception('No .wavs found at ' + str(search_pattern))
+            raise Exception("No .wavs found at " + str(search_pattern))
 
         return data_index, unknown_index, all_words
 
@@ -450,13 +482,13 @@ class AudioProcessor:
             self.background_data = None
             return
 
-        search_path = Path(background_dir / '*.wav')
+        search_path = Path(background_dir / "*.wav")
         for wav_path in tf.io.gfile.glob(str(search_path)):
             wav_data, _ = load_wav_file(wav_path, desired_samples=-1)
             background_data.append(tf.reshape(wav_data, [-1]))
 
         if not background_data:
-            raise Exception('No background wav files were found in ' + str(search_path))
+            raise Exception("No background wav files were found in " + str(search_path))
 
         # Ragged tensor as we cant use lists in tf dataset map functions.
         self.background_data = tf.ragged.stack(background_data)

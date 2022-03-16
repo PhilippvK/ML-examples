@@ -17,9 +17,9 @@ import math
 import tensorflow as tf
 
 
-def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
-                           window_size_ms, window_stride_ms,
-                           dct_coefficient_count):
+def prepare_model_settings(
+    label_count, sample_rate, clip_duration_ms, window_size_ms, window_stride_ms, dct_coefficient_count
+):
     """Calculates common settings needed for all models.
 
     Args:
@@ -36,22 +36,24 @@ def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
     desired_samples = int(sample_rate * clip_duration_ms / 1000)
     window_size_samples = int(sample_rate * window_size_ms / 1000)
     window_stride_samples = int(sample_rate * window_stride_ms / 1000)
-    length_minus_window = (desired_samples - window_size_samples)
+    length_minus_window = desired_samples - window_size_samples
     if length_minus_window < 0:
         spectrogram_length = 0
     else:
         spectrogram_length = 1 + int(length_minus_window / window_stride_samples)
     fingerprint_size = dct_coefficient_count * spectrogram_length
+    print("spectrogram_length", spectrogram_length)
+    print("fingerprint_size", fingerprint_size)
 
     return {
-        'desired_samples': desired_samples,
-        'window_size_samples': window_size_samples,
-        'window_stride_samples': window_stride_samples,
-        'spectrogram_length': spectrogram_length,
-        'dct_coefficient_count': dct_coefficient_count,
-        'fingerprint_size': fingerprint_size,
-        'label_count': label_count,
-        'sample_rate': sample_rate,
+        "desired_samples": desired_samples,
+        "window_size_samples": window_size_samples,
+        "window_stride_samples": window_stride_samples,
+        "spectrogram_length": spectrogram_length,
+        "dct_coefficient_count": dct_coefficient_count,
+        "fingerprint_size": fingerprint_size,
+        "label_count": label_count,
+        "sample_rate": sample_rate,
     }
 
 
@@ -71,21 +73,25 @@ def create_model(model_settings, model_architecture, model_size_info, is_trainin
         Exception: If the architecture type isn't recognized.
     """
 
-    if model_architecture == 'dnn':
+    if model_architecture == "dnn":
         return create_dnn_model(model_settings, model_size_info)
 
-    elif model_architecture == 'cnn':
+    elif model_architecture == "cnn":
         return create_cnn_model(model_settings, model_size_info)
 
-    elif model_architecture == 'ds_cnn':
+    elif model_architecture == "ds_cnn":
         return create_ds_cnn_model(model_settings, model_size_info)
-    elif model_architecture == 'single_fc':
+    elif model_architecture == "single_fc":
         return create_single_fc_model(model_settings)
-    elif model_architecture == 'basic_lstm':
+    elif model_architecture == "basic_lstm":
         return create_basic_lstm_model(model_settings, model_size_info, is_training)
+    elif model_architecture == "micro_speech":
+        return create_micro_speech_model(model_settings, model_size_info)
     else:
-        raise Exception(f'model_architecture argument {model_architecture} not recognized'
-                        f', should be one of, "dnn", "cnn", "ds_cnn" ')
+        raise Exception(
+            f"model_architecture argument {model_architecture} not recognized"
+            f', should be one of, "dnn", "cnn", "ds_cnn" '
+        )
 
 
 def create_single_fc_model(model_settings):
@@ -99,9 +105,9 @@ def create_single_fc_model(model_settings):
     Returns:
         tf.keras Model of the 'SINGLE_FC' architecture.
     """
-    inputs = tf.keras.Input(shape=(model_settings['fingerprint_size'],), name='input')
+    inputs = tf.keras.Input(shape=(model_settings["fingerprint_size"],), name="input")
     # Fully connected layer
-    output = tf.keras.layers.Dense(units=model_settings['label_count'], activation='softmax')(inputs)
+    output = tf.keras.layers.Dense(units=model_settings["label_count"], activation="softmax")(inputs)
 
     return tf.keras.Model(inputs, output)
 
@@ -109,21 +115,21 @@ def create_single_fc_model(model_settings):
 def create_basic_lstm_model(model_settings, model_size_info, is_training):
     """Builds a model with a basic lstm layer.
 
-        For details see https://arxiv.org/abs/1711.07128.
+    For details see https://arxiv.org/abs/1711.07128.
 
-        Args:
-            model_settings: Dict of different settings for model training.
-            model_size_info: Length of the array defines the number of hidden-layers and
-                each element in the array represent the number of neurons in that layer.
-            is_training: Determining whether the use of the model is for training or for something else.
+    Args:
+        model_settings: Dict of different settings for model training.
+        model_size_info: Length of the array defines the number of hidden-layers and
+            each element in the array represent the number of neurons in that layer.
+        is_training: Determining whether the use of the model is for training or for something else.
 
-        Returns:
-            tf.keras Model of the 'Basic_LSTM' architecture.
-        """
-    inputs = tf.keras.Input(shape=(model_settings['fingerprint_size'], ), name='input')
+    Returns:
+        tf.keras Model of the 'Basic_LSTM' architecture.
+    """
+    inputs = tf.keras.Input(shape=(model_settings["fingerprint_size"],), name="input")
 
-    input_frequency_size = model_settings['dct_coefficient_count']
-    input_time_size = model_settings['spectrogram_length']
+    input_frequency_size = model_settings["dct_coefficient_count"]
+    input_time_size = model_settings["spectrogram_length"]
     x = tf.reshape(inputs, shape=(-1, input_time_size, input_frequency_size))
 
     # LSTM layer, and unrolling depending on whether you are training or not
@@ -133,7 +139,7 @@ def create_basic_lstm_model(model_settings, model_size_info, is_training):
         x = tf.keras.layers.LSTM(units=model_size_info[0], time_major=False, unroll=True)(x)
 
     # Outputs a fully connected layer
-    output = tf.keras.layers.Dense(units=model_settings['label_count'], activation='softmax')(x)
+    output = tf.keras.layers.Dense(units=model_settings["label_count"], activation="softmax")(x)
 
     return tf.keras.Model(inputs, output)
 
@@ -152,17 +158,17 @@ def create_dnn_model(model_settings, model_size_info):
         tf.keras Model of the 'DNN' architecture.
     """
 
-    inputs = tf.keras.Input(shape=(model_settings['fingerprint_size'], ), name='input')
+    inputs = tf.keras.Input(shape=(model_settings["fingerprint_size"],), name="input")
 
     # First fully connected layer.
-    x = tf.keras.layers.Dense(units=model_size_info[0], activation='relu')(inputs)
+    x = tf.keras.layers.Dense(units=model_size_info[0], activation="relu")(inputs)
 
     # Hidden layers with ReLU activations.
     for i in range(1, len(model_size_info)):
-        x = tf.keras.layers.Dense(units=model_size_info[i], activation='relu')(x)
+        x = tf.keras.layers.Dense(units=model_size_info[i], activation="relu")(x)
 
     # Output fully connected layer.
-    output = tf.keras.layers.Dense(units=model_settings['label_count'], activation='softmax')(x)
+    output = tf.keras.layers.Dense(units=model_settings["label_count"], activation="softmax")(x)
 
     return tf.keras.Model(inputs, output)
 
@@ -182,8 +188,8 @@ def create_cnn_model(model_settings, model_size_info):
         tf.keras Model of the 'CNN' architecture.
     """
 
-    input_frequency_size = model_settings['dct_coefficient_count']
-    input_time_size = model_settings['spectrogram_length']
+    input_frequency_size = model_settings["dct_coefficient_count"]
+    input_time_size = model_settings["spectrogram_length"]
 
     first_filter_count = model_size_info[0]
     first_filter_height = model_size_info[1]  # Time axis.
@@ -200,25 +206,29 @@ def create_cnn_model(model_settings, model_size_info):
     linear_layer_size = model_size_info[10]
     fc_size = model_size_info[11]
 
-    inputs = tf.keras.Input(shape=(model_settings['fingerprint_size']), name='input')
+    inputs = tf.keras.Input(shape=(model_settings["fingerprint_size"]), name="input")
 
     # Reshape the flattened input.
     x = tf.reshape(inputs, shape=(-1, input_time_size, input_frequency_size, 1))
 
     # First convolution.
-    x = tf.keras.layers.Conv2D(filters=first_filter_count,
-                               kernel_size=(first_filter_height, first_filter_width),
-                               strides=(first_filter_stride_y, first_filter_stride_x),
-                               padding='VALID')(x)
+    x = tf.keras.layers.Conv2D(
+        filters=first_filter_count,
+        kernel_size=(first_filter_height, first_filter_width),
+        strides=(first_filter_stride_y, first_filter_stride_x),
+        padding="VALID",
+    )(x)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.ReLU()(x)
     x = tf.keras.layers.Dropout(rate=0)(x)
 
     # Second convolution.
-    x = tf.keras.layers.Conv2D(filters=second_filter_count,
-                               kernel_size=(second_filter_height, second_filter_width),
-                               strides=(second_filter_stride_y, second_filter_stride_x),
-                               padding='VALID')(x)
+    x = tf.keras.layers.Conv2D(
+        filters=second_filter_count,
+        kernel_size=(second_filter_height, second_filter_width),
+        strides=(second_filter_stride_y, second_filter_stride_x),
+        padding="VALID",
+    )(x)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.ReLU()(x)
     x = tf.keras.layers.Dropout(rate=0)(x)
@@ -236,7 +246,7 @@ def create_cnn_model(model_settings, model_size_info):
     x = tf.keras.layers.Dropout(rate=0)(x)
 
     # Output fully connected.
-    output = tf.keras.layers.Dense(units=model_settings['label_count'], activation='softmax')(x)
+    output = tf.keras.layers.Dense(units=model_settings["label_count"], activation="softmax")(x)
 
     return tf.keras.Model(inputs, output)
 
@@ -256,20 +266,20 @@ def create_ds_cnn_model(model_settings, model_size_info):
         tf.keras Model of the 'DS-CNN' architecture.
     """
 
-    label_count = model_settings['label_count']
-    input_frequency_size = model_settings['dct_coefficient_count']
-    input_time_size = model_settings['spectrogram_length']
+    label_count = model_settings["label_count"]
+    input_frequency_size = model_settings["dct_coefficient_count"]
+    input_time_size = model_settings["spectrogram_length"]
 
     t_dim = input_time_size
     f_dim = input_frequency_size
 
     # Extract model dimensions from model_size_info.
     num_layers = model_size_info[0]
-    conv_feat = [None]*num_layers
-    conv_kt = [None]*num_layers
-    conv_kf = [None]*num_layers
-    conv_st = [None]*num_layers
-    conv_sf = [None]*num_layers
+    conv_feat = [None] * num_layers
+    conv_kt = [None] * num_layers
+    conv_kf = [None] * num_layers
+    conv_st = [None] * num_layers
+    conv_sf = [None] * num_layers
 
     i = 1
     for layer_no in range(0, num_layers):
@@ -284,7 +294,7 @@ def create_ds_cnn_model(model_settings, model_size_info):
         conv_sf[layer_no] = model_size_info[i]
         i += 1
 
-    inputs = tf.keras.Input(shape=(model_settings['fingerprint_size']), name='input')
+    inputs = tf.keras.Input(shape=(model_settings["fingerprint_size"]), name="input")
 
     # Reshape the flattened input.
     x = tf.reshape(inputs, shape=(-1, input_time_size, input_frequency_size, 1))
@@ -293,17 +303,21 @@ def create_ds_cnn_model(model_settings, model_size_info):
     for layer_no in range(0, num_layers):
         if layer_no == 0:
             # First convolution.
-            x = tf.keras.layers.Conv2D(filters=conv_feat[0],
-                                       kernel_size=(conv_kt[0], conv_kf[0]),
-                                       strides=(conv_st[0], conv_sf[0]),
-                                       padding='SAME')(x)
+            x = tf.keras.layers.Conv2D(
+                filters=conv_feat[0],
+                kernel_size=(conv_kt[0], conv_kf[0]),
+                strides=(conv_st[0], conv_sf[0]),
+                padding="SAME",
+            )(x)
             x = tf.keras.layers.BatchNormalization()(x)
             x = tf.keras.layers.ReLU()(x)
         else:
             # Depthwise convolution.
-            x = tf.keras.layers.DepthwiseConv2D(kernel_size=(conv_kt[layer_no], conv_kf[layer_no]),
-                                                strides=(conv_sf[layer_no], conv_st[layer_no]),
-                                                padding='SAME')(x)
+            x = tf.keras.layers.DepthwiseConv2D(
+                kernel_size=(conv_kt[layer_no], conv_kf[layer_no]),
+                strides=(conv_sf[layer_no], conv_st[layer_no]),
+                padding="SAME",
+            )(x)
             x = tf.keras.layers.BatchNormalization()(x)
             x = tf.keras.layers.ReLU()(x)
 
@@ -312,8 +326,8 @@ def create_ds_cnn_model(model_settings, model_size_info):
             x = tf.keras.layers.BatchNormalization()(x)
             x = tf.keras.layers.ReLU()(x)
 
-        t_dim = math.ceil(t_dim/float(conv_st[layer_no]))
-        f_dim = math.ceil(f_dim/float(conv_sf[layer_no]))
+        t_dim = math.ceil(t_dim / float(conv_st[layer_no]))
+        f_dim = math.ceil(f_dim / float(conv_sf[layer_no]))
 
     # Global average pool.
     x = tf.keras.layers.AveragePooling2D(pool_size=(t_dim, f_dim), strides=1)(x)
@@ -322,6 +336,69 @@ def create_ds_cnn_model(model_settings, model_size_info):
     x = tf.reshape(x, shape=(-1, conv_feat[layer_no]))
 
     # Output connected layer.
-    output = tf.keras.layers.Dense(units=label_count, activation='softmax')(x)
+    output = tf.keras.layers.Dense(units=label_count, activation="softmax")(x)
+
+    return tf.keras.Model(inputs, output)
+
+
+def create_micro_speech_model(model_settings, model_size_info):
+    """Builds a model with a single depthwise-convolution layer followed by a single fully-connected layer.
+
+    Args:
+        model_settings: Dict of different settings for model training.
+        model_size_info: Defines the  convolution parameters in
+            {number of conv features, conv filter height, width, stride in y,x dir.},
+            followed by fully-connected layer size.
+
+    Returns:
+        tf.keras Model of the 'CNN' architecture.
+    """
+
+    input_frequency_size = model_settings["dct_coefficient_count"]  # 40?
+    input_time_size = model_settings["spectrogram_length"]  # 49?
+
+    # first_filter_count = model_size_info[0]  # (28?)
+    # first_filter_height = model_size_info[1]  # Time axis. (10?)
+    # first_filter_width = model_size_info[2]  # Frequency axis. (4?)
+    # first_filter_stride_y = model_size_info[3]  # Time axis. (2?)
+    # first_filter_stride_x = model_size_info[4]  # Frequency_axis. (2?)
+
+    # fc_size = model_size_info[5]
+
+    inputs = tf.keras.Input(shape=(model_settings["fingerprint_size"]), name="input")
+
+    # Reshape the flattened input.
+    x = tf.reshape(inputs, shape=(-1, input_time_size, input_frequency_size, 1))
+
+    # First convolution.
+    x = tf.keras.layers.DepthwiseConv2D(
+        depth_multiplier=8,
+        kernel_size=(10, 8),
+        strides=(2, 2),
+        padding="SAME",
+        activation="relu",
+    )(x)
+    # x = tf.keras.layers.BatchNormalization()(x)
+    # x = tf.keras.layers.ReLU()(x)
+    # x = tf.keras.layers.Dropout(rate=0)(x)
+
+    # Flatten for fully connected layers.
+    x = tf.keras.layers.Flatten()(x)
+
+    # Fully connected layer with no activation.
+    # x = tf.keras.layers.Dense(units=linear_layer_size)(x)
+
+    # Fully connected layer with ReLU activation.
+    # x = tf.keras.layers.Dense(units=fc_size)(x)
+    # x = tf.keras.layers.BatchNormalization()(x)
+    # x = tf.keras.layers.ReLU()(x)
+    # x = tf.keras.layers.Dropout(rate=0)(x)
+
+    # Output fully connected.
+    print("x", x)
+    output = tf.keras.layers.Dense(units=model_settings["label_count"], activation="softmax")(x)
+    # output = tf.keras.layers.Dense(model_settings["label_count"], activation="softmax")(x)
+    # output = tf.keras.layers.Dense(model_settings["label_count"])(x)
+    # x = tf.keras.layers.ReLU()(output)
 
     return tf.keras.Model(inputs, output)
