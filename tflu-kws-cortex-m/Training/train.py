@@ -22,6 +22,11 @@ import data
 import models
 
 
+try:
+    AUTOTUNE = tf.data.AUTOTUNE
+except:
+    AUTOTUNE = tf.data.experimental.AUTOTUNE  # Compatibilty mode for TF2.3
+
 def train():
     model_settings = models.prepare_model_settings(
         len(data.prepare_words_list(FLAGS.wanted_words.split(","))),
@@ -64,9 +69,9 @@ def train():
         FLAGS.background_volume,
         int((FLAGS.time_shift_ms * FLAGS.sample_rate) / 1000),
     )
-    train_data = train_data.repeat().batch(FLAGS.batch_size).prefetch(tf.data.AUTOTUNE)
+    train_data = train_data.repeat().batch(FLAGS.batch_size).prefetch(AUTOTUNE)
     val_data = audio_processor.get_data(audio_processor.Modes.VALIDATION)
-    val_data = val_data.batch(FLAGS.batch_size).prefetch(tf.data.AUTOTUNE)
+    val_data = val_data.batch(FLAGS.batch_size).prefetch(AUTOTUNE)
 
     # We train for a max number of iterations so need to calculate how many 'epochs' this will be.
     training_steps_max = np.sum(training_steps_list)
