@@ -21,7 +21,7 @@ import data
 import models
 
 
-def test():
+def test(model_sesstings, model_):
     """Calculate accuracy and confusion matrices on validation and test sets.
 
     Model is created and weights loaded from supplied command line arguments.
@@ -30,7 +30,7 @@ def test():
                                                    FLAGS.sample_rate, FLAGS.clip_duration_ms, FLAGS.window_size_ms,
                                                    FLAGS.window_stride_ms, FLAGS.dct_coefficient_count)
 
-    model = models.create_model(model_settings, FLAGS.model_architecture, FLAGS.model_size_info, False)
+    model = models.create_model(model_settings, FLAGS.model_architecture)
 
     audio_processor = data.AudioProcessor(data_url=FLAGS.data_url,
                                           data_dir=FLAGS.data_dir,
@@ -43,35 +43,47 @@ def test():
 
     model.load_weights(FLAGS.checkpoint).expect_partial()
 
-    # Evaluate on validation set.
     print("Running testing on validation set...")
-    val_data = audio_processor.get_data(audio_processor.Modes.VALIDATION).batch(FLAGS.batch_size)
+    get_val_accuracy(model_settings, model, audio_processor, FLAGS.batch_size)
+
+    print("Running testing on test set...")
+    get_test_accuracy(model_settings, model, audio_pocessor, FLAGS.batch_size)
+
+def get_val_accuracy(model_settings, model, audio_processor, batch_size, verbose=True):
+    """Evaluate on validation set."""
+    val_data = audio_processor.get_data(audio_processor.Modes.VALIDATION).batch(batch_size)
     expected_indices = np.concatenate([y for x, y in val_data])
 
     predictions = model.predict(val_data)
     predicted_indices = tf.argmax(predictions, axis=1)
 
     val_accuracy = calculate_accuracy(predicted_indices, expected_indices)
-    confusion_matrix = tf.math.confusion_matrix(expected_indices, predicted_indices,
-                                                num_classes=model_settings['label_count'])
-    print(confusion_matrix.numpy())
-    print(f'Validation accuracy = {val_accuracy * 100:.2f}%'
-          f'(N={audio_processor.set_size(audio_processor.Modes.VALIDATION)})')
+    if verbose:
+        confusion_matrix = tf.math.confusion_matrix(expected_indices, predicted_indices,
+                                                    num_classes=model_settings['label_count'])
+        print("Confusion matrix:")
+        print(confusion_matrix.numpy())
+        print(f'Validation accuracy = {val_accuracy * 100:.2f}%'
+              f'(N={audio_processor.set_size(audio_processor.Modes.VALIDATION)})')
+    return val_accuracy
 
-    # Evaluate on testing set.
-    print("Running testing on test set...")
-    test_data = audio_processor.get_data(audio_processor.Modes.TESTING).batch(FLAGS.batch_size)
+def get_test_accuracy(model_settings, model, audio_processor, batch_size, verbose=True):
+    """Evaluate on testing set."""
+    test_data = audio_processor.get_data(audio_processor.Modes.TESTING).batch(batch_size)
     expected_indices = np.concatenate([y for x, y in test_data])
 
     predictions = model.predict(test_data)
     predicted_indices = tf.argmax(predictions, axis=1)
 
     test_accuracy = calculate_accuracy(predicted_indices, expected_indices)
-    confusion_matrix = tf.math.confusion_matrix(expected_indices, predicted_indices,
-                                                num_classes=model_settings['label_count'])
-    print(confusion_matrix.numpy())
-    print(f'Test accuracy = {test_accuracy * 100:.2f}%'
-          f'(N={audio_processor.set_size(audio_processor.Modes.TESTING)})')
+    if verbose:
+        confusion_matrix = tf.math.confusion_matrix(expected_indices, predicted_indices,
+                                                    num_classes=model_settings['label_count'])
+        print("Confusion matrix:")
+        print(confusion_matrix.numpy())
+        print(f'Test accuracy = {test_accuracy * 100:.2f}%'
+              f'(N={audio_processor.set_size(audio_processor.Modes.TESTING)})')
+    return test_accuracy
 
 
 def calculate_accuracy(predicted_indices, expected_indices):

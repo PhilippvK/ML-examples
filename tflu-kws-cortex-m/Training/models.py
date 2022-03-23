@@ -42,8 +42,6 @@ def prepare_model_settings(
     else:
         spectrogram_length = 1 + int(length_minus_window / window_stride_samples)
     fingerprint_size = dct_coefficient_count * spectrogram_length
-    print("spectrogram_length", spectrogram_length)
-    print("fingerprint_size", fingerprint_size)
 
     return {
         "desired_samples": desired_samples,

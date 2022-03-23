@@ -331,7 +331,7 @@ class AudioProcessor:
             target_directory: Directory to download and extract to.
         """
         target_directory = Path(target_directory)
-        target_directory.mkdir(exist_ok=True)
+        target_directory.mkdir(exist_ok=True, parents=True)
 
         filename = data_url.split("/")[-1]
         filepath = target_directory / filename
@@ -347,7 +347,6 @@ class AudioProcessor:
 
                 sys.stdout.write(s)
                 sys.stdout.flush()
-
             filepath, _ = urllib.request.urlretrieve(data_url, filepath, _report_hook)
             print()
 

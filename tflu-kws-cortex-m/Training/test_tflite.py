@@ -45,6 +45,7 @@ def tflite_test(model_settings, audio_processor, tflite_path):
     confusion_matrix = tf.math.confusion_matrix(expected_indices, predicted_indices,
                                                 num_classes=model_settings['label_count'])
 
+    print("Confusion matrix:")
     print(confusion_matrix.numpy())
     print(f'Test accuracy = {test_accuracy * 100:.2f}%'
           f'(N={audio_processor.set_size(audio_processor.Modes.TESTING)})')

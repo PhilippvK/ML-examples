@@ -24,7 +24,7 @@ from test_tflite import tflite_test
 NUM_REP_DATA_SAMPLES = 100  # How many samples to use for post training quantization.
 
 
-def convert(model_settings, audio_processor, checkpoint, quantize, inference_type, tflite_path):
+def convert(model, audio_processor, checkpoint, quantize, inference_type, tflite_path):
     """Load our trained floating point model and convert it.
 
     TFLite conversion or post training quantization is performed and the
@@ -32,20 +32,16 @@ def convert(model_settings, audio_processor, checkpoint, quantize, inference_typ
     We use samples from the validation set to do post training quantization.
 
     Args:
-        model_settings: Dictionary of common model settings.
+        model: The keras model.
         audio_processor: Audio processor class object.
         checkpoint: Path to training checkpoint to load.
         quantize: Whether to quantize the model or convert to fp32 TFLite model.
         inference_type: Input/output type of the quantized model.
         tflite_path: Output TFLite file save path.
     """
-    model = models.create_model(model_settings, FLAGS.model_architecture, FLAGS.model_size_info, False)
     model.load_weights(checkpoint).expect_partial()
 
     val_data = audio_processor.get_data(audio_processor.Modes.VALIDATION).batch(1)
-    print("!!!")
-    print("model_settings", model_settings)
-    print("!!!")
 
     def _rep_dataset():
         """Generator function to produce representative dataset."""
