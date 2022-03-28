@@ -42,7 +42,14 @@ def convert(model_settings, audio_processor, checkpoint, quantize, inference_typ
     model = models.create_model(model_settings, FLAGS.model_architecture, FLAGS.model_size_info, False)
     model.load_weights(checkpoint).expect_partial()
 
-    val_data = audio_processor.get_data(audio_processor.Modes.VALIDATION).batch(1)
+    # val_data = audio_processor.get_data(audio_processor.Modes.VALIDATION).batch(1)
+    BACKGROUND_FREQUENCY = 0.8
+    # BACKGROUND_FREQUENCY = 0
+    BACKGROUND_VOLUME_RANGE = 0.1
+    # BACKGROUND_VOLUME_RANGE = 0
+    TIME_SHIFT_MS = 100
+    # TIME_SHIFT_MS = 100
+    val_data = audio_processor.get_data(audio_processor.Modes.TESTING, background_frequency=BACKGROUND_FREQUENCY, background_volume_range=BACKGROUND_VOLUME_RANGE, time_shift=TIME_SHIFT_MS).batch(1)
 
     def _rep_dataset():
         """Generator function to produce representative dataset."""

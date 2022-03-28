@@ -77,6 +77,9 @@ def create_model(model_settings, model_architecture, model_size_info, is_trainin
     elif model_architecture == 'cnn':
         return create_cnn_model(model_settings, model_size_info)
 
+    elif model_architecture == 'micro_speech':
+        return create_micro_speech_model(model_settings, model_size_info)
+
     elif model_architecture == 'ds_cnn':
         return create_ds_cnn_model(model_settings, model_size_info)
     elif model_architecture == 'single_fc':
@@ -166,6 +169,32 @@ def create_dnn_model(model_settings, model_size_info):
 
     return tf.keras.Model(inputs, output)
 
+def create_micro_speech_model(model_settings, model_size_info):
+    # Get relevant model setting.
+    input_frequency_size = model_settings['dct_coefficient_count']
+    input_time_size = model_settings['spectrogram_length']
+
+    inputs = tf.keras.Input(shape=(model_settings["fingerprint_size"]), name="input")
+
+    # Reshape the flattened input.
+    x = tf.reshape(inputs, shape=(-1, input_time_size, input_frequency_size, 1))
+
+    # First convolution.
+    x = tf.keras.layers.DepthwiseConv2D(
+        depth_multiplier=8,
+        kernel_size=(10, 8),
+        strides=(2, 2),
+        padding="SAME",
+        activation="relu",
+    )(x)
+
+    # Flatten for fully connected layers.
+    x = tf.keras.layers.Flatten()(x)
+
+    # Output fully connected.
+    output = tf.keras.layers.Dense(units=model_settings["label_count"], activation="softmax")(x)
+
+    return tf.keras.Model(inputs, output)
 
 def create_cnn_model(model_settings, model_size_info):
     """Builds a model with 2 convolution layers followed by a linear layer and a hidden fully-connected layer.
