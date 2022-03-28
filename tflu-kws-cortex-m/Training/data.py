@@ -59,8 +59,10 @@ def load_wav_file(wav_filename, desired_samples):
 
     return decoded_wav.audio, decoded_wav.sample_rate
 
+from tensorflow.lite.experimental.microfrontend.python.ops import audio_microfrontend_op as frontend_op
 
-def calculate_mfcc(audio_signal, audio_sample_rate, window_size, window_stride, num_mfcc):
+def calculate_mfcc(audio_signal, audio_sample_rate, window_size, window_stride, num_mfcc, micro=True):
+    # audio_sample_rate = 
     """Returns Mel Frequency Cepstral Coefficients (MFCC) for a given audio signal.
 
     Args:
@@ -73,10 +75,28 @@ def calculate_mfcc(audio_signal, audio_sample_rate, window_size, window_stride, 
     Returns:
         Calculated mffc features.
     """
-    spectrogram = audio_ops.audio_spectrogram(input=audio_signal, window_size=window_size, stride=window_stride,
+    if micro:
+        window_size_ms = (window_size * 1000) / 16000
+        window_step_ms = (window_stride * 1000) / 16000
+        int16_input = tf.cast(tf.multiply(audio_signal, 32768), tf.int16)
+        print("audia_signal", audio_signal)
+        print("int16_input", int16_input)
+        reshaped =  tf.reshape(int16_input, (16000, 1))
+        print("sample_rate", audio_sample_rate)
+        micro_frontend = frontend_op.audio_microfrontend(
+            reshaped,
+            sample_rate=16000,
+            window_size=window_size_ms,
+            window_step=window_step_ms,
+            num_channels=num_mfcc,
+            out_scale=25.6,
+            out_type=tf.float32)
+        # mfcc_features = tf.multiply(micro_frontend, (10.0 / 256.0))
+        mfcc_features =  tf.expand_dims(tf.expand_dims(micro_frontend, -1), 0)
+    else:
+        spectrogram = audio_ops.audio_spectrogram(input=audio_signal, window_size=window_size, stride=window_stride,
                                               magnitude_squared=True)
-
-    mfcc_features = audio_ops.mfcc(spectrogram, audio_sample_rate, dct_coefficient_count=num_mfcc)
+        mfcc_features = audio_ops.mfcc(spectrogram, audio_sample_rate, dct_coefficient_count=num_mfcc)
 
     return mfcc_features
 
@@ -193,6 +213,7 @@ class AudioProcessor:
                                                                      time_shift, use_background, self.background_data),
                               num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
+        print("dataset", dataset)
         return dataset
 
     def set_size(self, mode):
@@ -240,6 +261,7 @@ class AudioProcessor:
 
         desired_samples = model_settings['desired_samples']
         audio, sample_rate = load_wav_file(path, desired_samples=desired_samples)
+        # sample_rate = 16000
 
         # Make our own silence audio data.
         if label == SILENCE_INDEX:
@@ -285,7 +307,9 @@ class AudioProcessor:
         mfcc = calculate_mfcc(background_clamp, sample_rate, model_settings['window_size_samples'],
                               model_settings['window_stride_samples'],
                               model_settings['dct_coefficient_count'])
+        print("A", mfcc)
         mfcc = tf.reshape(mfcc, [-1])
+        print("B", mfcc)
 
         return mfcc, label
 
@@ -318,8 +342,8 @@ class AudioProcessor:
             filepath, _ = urllib.request.urlretrieve(data_url, filepath, _report_hook)
             print()
 
-        print(f'Untarring {filename}...')
-        tarfile.open(filepath, 'r:gz').extractall(target_directory)
+            print(f'Untarring {filename}...')
+            tarfile.open(filepath, 'r:gz').extractall(target_directory)
 
     def _prepare_datasets(self, silence_percentage, unknown_percentage, wanted_words,
                           validation_percentage, testing_percentage):
